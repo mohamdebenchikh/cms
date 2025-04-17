@@ -428,7 +428,7 @@ export default function Posts({ posts, categories, tags, filters }: PostsProps) 
                   Reset Filters
                 </Button>
               </div>
-            );
+            )}
 
             {/* Pagination Info - Moved to the top */}
 
