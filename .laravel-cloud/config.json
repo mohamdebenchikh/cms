@@ -1,0 +1,8 @@
+{
+    "build": {
+        "commands": [
+            "composer install --no-dev --optimize-autoloader",
+            "composer run-script cloud-deploy"
+        ]
+    }
+}
