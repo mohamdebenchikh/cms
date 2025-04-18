@@ -75,7 +75,13 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-6. Run database migrations and seed initial data
+6. Run database migrations and set up admin user
+```bash
+php artisan migrate
+php artisan setup:admin
+```
+
+Alternatively, you can run migrations with all seed data:
 ```bash
 php artisan migrate --seed
 ```
