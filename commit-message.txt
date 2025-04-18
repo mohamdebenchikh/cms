@@ -1,7 +1,0 @@
-Fix database compatibility for PostgreSQL date functions
-
-- Replace SQLite-specific strftime() with database-agnostic date functions
-- Add conditional logic to detect database type (SQLite, PostgreSQL, MySQL)
-- Use appropriate date extraction functions for each database type
-- Fix archive data query and date filtering in posts method
-- Ensure consistent formatting of date parts across database systems
