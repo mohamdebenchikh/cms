@@ -97,12 +97,14 @@ export function TagInput({
           .replace(/-+$/, ''),
       };
 
-      // First try with axios to handle JSON responses
+      // Use axios for tag creation to get JSON response
       try {
+        // Make sure we're explicitly requesting JSON
         const response = await axios.post(createTagEndpoint, tagData, {
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
+            'Content-Type': 'application/json'
           }
         });
 

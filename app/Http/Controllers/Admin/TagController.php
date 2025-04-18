@@ -65,7 +65,12 @@ class TagController extends Controller
 
         $tag = Tag::create($request->validated());
 
-        if ($request->wantsJson() || $request->ajax()) {
+        // Check if request explicitly wants JSON (from axios/fetch API calls)
+        // This handles requests from the tag-input component
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest' &&
+            $request->header('Accept') &&
+            str_contains($request->header('Accept'), 'application/json')) {
+
             return response()->json([
                 'success' => true,
                 'message' => 'Tag created successfully.',
@@ -73,11 +78,20 @@ class TagController extends Controller
             ]);
         }
 
-        // If this is an AJAX request from the post form, return with the tag in flash data
+        // Handle Inertia requests (from the tag form dialog)
+        // This ensures we redirect back with a success message
         if ($request->header('X-Inertia')) {
+            if ($request->wantsJson()) {
+                // For Inertia form submissions that expect JSON (like tag-form-dialog)
+                return redirect()->route('admin.tags.index')
+                    ->with('success', 'Tag created successfully.');
+            }
+
+            // For Inertia requests that need the tag in flash data
             return redirect()->back()->with('tag', $tag);
         }
 
+        // Regular form submission
         return redirect()->route('admin.tags.index')
             ->with('success', 'Tag created successfully.');
     }
@@ -116,7 +130,11 @@ class TagController extends Controller
 
         $tag->update($request->validated());
 
-        if ($request->wantsJson()) {
+        // Check if request explicitly wants JSON (from axios/fetch API calls)
+        if ($request->header('X-Requested-With') === 'XMLHttpRequest' &&
+            $request->header('Accept') &&
+            str_contains($request->header('Accept'), 'application/json')) {
+
             return response()->json([
                 'success' => true,
                 'message' => 'Tag updated successfully.',
@@ -124,6 +142,13 @@ class TagController extends Controller
             ]);
         }
 
+        // Handle Inertia requests
+        if ($request->header('X-Inertia')) {
+            return redirect()->route('admin.tags.index')
+                ->with('success', 'Tag updated successfully.');
+        }
+
+        // Regular form submission
         return redirect()->route('admin.tags.index')
             ->with('success', 'Tag updated successfully.');
     }

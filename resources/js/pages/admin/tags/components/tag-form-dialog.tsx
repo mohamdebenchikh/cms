@@ -37,22 +37,37 @@ export function TagFormDialog({ tag, isOpen, onClose, mode }: TagFormDialogProps
 
     if (mode === 'create') {
       post(route('admin.tags.store'), {
+        // Don't set headers here to ensure it uses Inertia's default behavior
+        preserveScroll: true,
         onSuccess: () => {
           toast.success('Tag created successfully');
           handleClose();
         },
-        onError: () => {
-          toast.error('Failed to create tag');
+        onError: (errors) => {
+          if (errors.name) {
+            toast.error(errors.name);
+          } else if (errors.slug) {
+            toast.error(errors.slug);
+          } else {
+            toast.error('Failed to create tag');
+          }
         },
       });
     } else if (mode === 'edit' && tag) {
       put(route('admin.tags.update', tag.id), {
+        preserveScroll: true,
         onSuccess: () => {
           toast.success('Tag updated successfully');
           handleClose();
         },
-        onError: () => {
-          toast.error('Failed to update tag');
+        onError: (errors) => {
+          if (errors.name) {
+            toast.error(errors.name);
+          } else if (errors.slug) {
+            toast.error(errors.slug);
+          } else {
+            toast.error('Failed to update tag');
+          }
         },
       });
     }
