@@ -79,26 +79,49 @@ class BlogController extends Controller
             ->get();
 
         // Get archive data (posts grouped by month and year)
-        // Use SQLite-compatible date functions
-        $archiveData = Post::published()
-            ->selectRaw("strftime('%Y', published_at) as year, strftime('%m', published_at) as month, COUNT(*) as post_count")
-            ->groupBy('year', 'month')
-            ->orderByRaw('year DESC, month DESC')
-            ->take(12) // Last 12 months
-            ->get()
-            ->map(function ($item) {
-                // Convert string month to integer for Carbon
-                $monthInt = (int)$item->month;
-                $yearInt = (int)$item->year;
-                $date = Carbon::createFromDate($yearInt, $monthInt, 1);
-                return [
-                    'year' => $yearInt,
-                    'month' => $monthInt,
-                    'month_name' => $date->format('F'),
-                    'post_count' => $item->post_count,
-                    'url' => route('blog.posts', ['year' => $yearInt, 'month' => $monthInt]),
-                ];
-            });
+        // Use database-agnostic approach
+        $connection = config('database.default');
+        $archiveData = null;
+
+        if ($connection === 'sqlite') {
+            // SQLite version
+            $archiveData = Post::published()
+                ->selectRaw("strftime('%Y', published_at) as year, strftime('%m', published_at) as month, COUNT(*) as post_count")
+                ->groupBy('year', 'month')
+                ->orderByRaw('year DESC, month DESC')
+                ->take(12)
+                ->get();
+        } elseif ($connection === 'pgsql') {
+            // PostgreSQL version
+            $archiveData = Post::published()
+                ->selectRaw("EXTRACT(YEAR FROM published_at) as year, EXTRACT(MONTH FROM published_at) as month, COUNT(*) as post_count")
+                ->groupBy('year', 'month')
+                ->orderByRaw('year DESC, month DESC')
+                ->take(12)
+                ->get();
+        } else {
+            // MySQL and others
+            $archiveData = Post::published()
+                ->selectRaw("YEAR(published_at) as year, MONTH(published_at) as month, COUNT(*) as post_count")
+                ->groupBy('year', 'month')
+                ->orderByRaw('year DESC, month DESC')
+                ->take(12)
+                ->get();
+        }
+
+        // Map the results to a consistent format
+        $archiveData = $archiveData->map(function ($item) {
+            $monthInt = (int)$item->month;
+            $yearInt = (int)$item->year;
+            $date = Carbon::createFromDate($yearInt, $monthInt, 1);
+            return [
+                'year' => $yearInt,
+                'month' => $monthInt,
+                'month_name' => $date->format('F'),
+                'post_count' => $item->post_count,
+                'url' => route('blog.posts', ['year' => $yearInt, 'month' => $monthInt]),
+            ];
+        });
 
         return Inertia::render('blog/home', [
             'featuredPost' => $featuredPost,
@@ -516,14 +539,37 @@ class BlogController extends Controller
             });
         }
 
-        // Apply date filters if provided - using SQLite compatible functions
+        // Apply date filters if provided - using database-agnostic approach
         if ($year && $month) {
-            // Format month with leading zero if needed
+            $connection = config('database.default');
             $formattedMonth = str_pad($month, 2, '0', STR_PAD_LEFT);
-            $query->whereRaw("strftime('%Y', published_at) = ?" , [$year])
-                  ->whereRaw("strftime('%m', published_at) = ?", [$formattedMonth]);
+
+            if ($connection === 'sqlite') {
+                // SQLite
+                $query->whereRaw("strftime('%Y', published_at) = ?", [$year])
+                      ->whereRaw("strftime('%m', published_at) = ?", [$formattedMonth]);
+            } elseif ($connection === 'pgsql') {
+                // PostgreSQL
+                $query->whereRaw("EXTRACT(YEAR FROM published_at) = ?", [$year])
+                      ->whereRaw("EXTRACT(MONTH FROM published_at) = ?", [$month]);
+            } else {
+                // MySQL and others
+                $query->whereRaw("YEAR(published_at) = ?", [$year])
+                      ->whereRaw("MONTH(published_at) = ?", [$month]);
+            }
         } elseif ($year) {
-            $query->whereRaw("strftime('%Y', published_at) = ?", [$year]);
+            $connection = config('database.default');
+
+            if ($connection === 'sqlite') {
+                // SQLite
+                $query->whereRaw("strftime('%Y', published_at) = ?", [$year]);
+            } elseif ($connection === 'pgsql') {
+                // PostgreSQL
+                $query->whereRaw("EXTRACT(YEAR FROM published_at) = ?", [$year]);
+            } else {
+                // MySQL and others
+                $query->whereRaw("YEAR(published_at) = ?", [$year]);
+            }
         }
 
         // Apply sorting
